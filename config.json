@@ -1,0 +1,9 @@
+{
+  "models": {
+    "WriteUpToMarkdown": "gemini-2.5-flash",
+    "WriteupParser": "models/gemini-2.5-pro",
+    "LabCorePlanner": "models/gemini-2.5-pro",
+    "LabBuilder": "models/gemini-2.5-pro"
+  },
+  "provider": "gemini"
+}
