@@ -1,0 +1,62 @@
+[MAIN]
+# Ignore non-Python files
+ignore=venv,.venv,output,logs,__pycache__
+ignore-patterns=.*\.md$,.*\.txt$,.*\.sh$,.*\.json$,.*\.yml$,.*\.yaml$
+
+[MESSAGES CONTROL]
+# Disable specific warnings that are not applicable or too strict
+disable=
+    # Design warnings - acceptable for this project
+    too-many-instance-attributes,
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-lines,
+    too-few-public-methods,
+    # Import errors for optional dependencies
+    import-error,
+    no-name-in-module,
+    relative-beyond-top-level,
+    # Catching Exception is fine for top-level handlers
+    broad-exception-caught,
+    # Protected access is intentional for internal methods
+    protected-access,
+    # Constant naming for lazy imports and standard names
+    invalid-name,
+    disallowed-name,
+    # Code duplication between config and code is expected
+    duplicate-code,
+    # These are intentional design choices
+    inconsistent-return-statements,
+    no-else-return,
+    no-else-raise,
+    raise-missing-from,
+    # File encoding defaults are fine for Python 3
+    unspecified-encoding,
+    # F-strings are used for consistency
+    f-string-without-interpolation,
+    # False positives from dynamic typing
+    raising-bad-type,
+    unsupported-membership-test,
+    unsubscriptable-object
+
+[FORMAT]
+# Maximum line length
+max-line-length=100
+
+# Allow reasonable complexity
+max-module-lines=1500
+
+[BASIC]
+# Good variable names
+good-names=i,j,k,e,f,_,df,db,id,ip,ok
+
+[DESIGN]
+# Reasonable limits
+max-args=10
+max-attributes=20
+max-locals=20
+max-branches=15
+max-statements=75
