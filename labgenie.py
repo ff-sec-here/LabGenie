@@ -453,8 +453,8 @@ class LabGenieWorkflow:
             provider_name = "Vertex AI" if self.provider == "vertex" else "Gemini API"
             info_text = (
                 f"[dim]Provider: {provider_name} | "
-                f"Run: {self.run_id[:13]}... | "
-                f"Output: {self.output_base}[/dim]"
+                f"Run: {self.run_id} | "
+                f"Output: {self.output_base.absolute()}[/dim]"
             )
             console.print(info_text)
         console.print()
@@ -509,18 +509,21 @@ class LabGenieWorkflow:
             elapsed = time.time() - step_start
             total_elapsed = self.logger.get_total_elapsed() if self.logger else "00:00:00"
 
-            # Format elapsed time
-            elapsed_str = f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
+            # Format elapsed time consistently in HH:MM:SS
+            hours = int(elapsed // 3600)
+            minutes = int((elapsed % 3600) // 60)
+            seconds = int(elapsed % 60)
+            elapsed_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
             # Simulate progress (based on time, capped at 90%)
             progress = min(90, (elapsed / 30) * 100)  # Assume 30s average
 
-            # Use ultra animation function
+            # Use ultra animation function with clear time labels
             panel = create_step_animation(
                 step_name=step_name,
                 description=description,
                 progress=progress,
-                elapsed_time=f"{elapsed_str} / Total: {total_elapsed}"
+                elapsed_time=f"Step: {elapsed_str} | Workflow: {total_elapsed}"
             )
             return panel
 
@@ -562,7 +565,8 @@ class LabGenieWorkflow:
             f"[dim]⏱️  {step_duration:.1f}s[/dim]",
             border_style="green",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
         )
         console.print(success_msg)
         return result
@@ -639,7 +643,8 @@ class LabGenieWorkflow:
             "[bold white]💾 Saving Lab Artifacts[/bold white]",
             border_style="cyan",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
         )
         console.print(header)
 
@@ -680,7 +685,8 @@ class LabGenieWorkflow:
         progress_panel = Panel(
             "[bold cyan]⏳ Writing files to disk...[/bold cyan]",
             border_style="cyan",
-            box=box.ROUNDED
+            box=box.ROUNDED,
+            width=60
         )
         console.print(progress_panel)
 
@@ -734,7 +740,8 @@ class LabGenieWorkflow:
             f"[dim]{self.output_dir.absolute()}[/dim]",
             border_style="green",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
         )
         console.print(success_msg)
         return self.output_dir
@@ -816,7 +823,8 @@ class LabGenieWorkflow:
                 "[bold green]🔍 Debug Mode: ENABLED[/bold green]",
                 border_style="green",
                 box=box.ROUNDED,
-                padding=(0, 1)
+                padding=(0, 1),
+                width=60
             ))
 
         # Input prompt panel
@@ -838,7 +846,8 @@ class LabGenieWorkflow:
                 "[red]❌ URL is required[/red]",
                 border_style="red",
                 box=box.ROUNDED,
-                padding=(0, 1)
+                padding=(0, 1),
+                width=60
             )
             console.print(error_panel)
             return
@@ -848,7 +857,8 @@ class LabGenieWorkflow:
                 f"[dim]Processing: {url}[/dim]",
                 border_style="blue",
                 box=box.ROUNDED,
-                padding=(0, 1)
+                padding=(0, 1),
+                width=60
             )
             console.print(info_panel)
 
@@ -968,7 +978,8 @@ def run_wizard():
         "[bold cyan]🧙 LabGenie Configuration Wizard[/bold cyan]",
         border_style="cyan",
         box=box.DOUBLE_EDGE,
-        padding=(0, 1)
+        padding=(0, 1),
+        width=60
     )
     console.print(wizard_header)
     console.print()
@@ -977,7 +988,8 @@ def run_wizard():
     step1_panel = Panel(
         "[bold white]Step 1: Vulnerability Write-up[/bold white]",
         border_style="cyan",
-        box=box.ROUNDED
+        box=box.ROUNDED,
+        width=60
     )
     console.print(step1_panel)
     url = Prompt.ask("🔗 [cyan]Enter the write-up URL[/cyan]")
@@ -987,7 +999,8 @@ def run_wizard():
     step2_panel = Panel(
         "[bold white]Step 2: Output Configuration[/bold white]",
         border_style="cyan",
-        box=box.ROUNDED
+        box=box.ROUNDED,
+        width=60
     )
     console.print(step2_panel)
     use_custom_output = Confirm.ask(
@@ -1009,7 +1022,8 @@ def run_wizard():
     step3_panel = Panel(
         "[bold white]Step 3: Runtime Options[/bold white]",
         border_style="cyan",
-        box=box.ROUNDED
+        box=box.ROUNDED,
+        width=60
     )
     console.print(step3_panel)
     debug_mode = Confirm.ask("🔍 Enable debug mode?", default=False)
@@ -1020,7 +1034,8 @@ def run_wizard():
         "[bold green]✓ Configuration complete![/bold green]",
         border_style="green",
         box=box.ROUNDED,
-        padding=(0, 1)
+        padding=(0, 1),
+        width=60
     )
     console.print(complete_panel)
     console.print()
@@ -1136,7 +1151,8 @@ For more information, visit: https://github.com/yourusername/LabGenie
             f"[dim]Processing URL: {config['url']}[/dim]",
             border_style="blue",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
         )
         console.print(processing_panel)
         console.print()
@@ -1197,7 +1213,8 @@ For more information, visit: https://github.com/yourusername/LabGenie
                 "[bold green]🔍 Debug Mode: ENABLED[/bold green]",
                 border_style="green",
                 box=box.ROUNDED,
-                padding=(0, 1)
+                padding=(0, 1),
+                width=60
             )
             console.print(debug_panel)
             console.print()
@@ -1207,7 +1224,8 @@ For more information, visit: https://github.com/yourusername/LabGenie
             f"[dim]Processing URL: {args.url}[/dim]",
             border_style="blue",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
         )
         console.print(processing_panel)
         console.print()

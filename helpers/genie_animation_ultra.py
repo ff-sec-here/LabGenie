@@ -54,14 +54,15 @@ def create_epic_startup_banner() -> Panel:
     banner.append("━━━━━━━━━━━━━━━\n", style="cyan")
 
     banner.append("🧞 ✨ 🔮 ⚡ 💫 🌟\n", style="")
-    banner.append("Configurable AI Provider:\nGemini or Vertex", style="dim")
+    banner.append("Configurable AI Provider:\n", style="dim")
+    banner.append("Gemini or Vertex", style="dim")
 
     return Panel(
-        Align.left(banner),
+        banner,
         box=box.DOUBLE_EDGE,
         border_style="bold magenta",
         padding=(0, 1),
-        width=40
+        width=38
     )
 
 
@@ -192,14 +193,15 @@ def create_step_animation(
     content.append(step_name, style="bold white")
     content.append("\n")
     content.append(f"{description}\n", style="dim")
-    content.append(f"\n[{color}]{bar}[/] {progress:.0f}%", style="")
-    content.append(f"  [{color}]⏱ {elapsed_time}[/]", style="")
+    content.append(f"\n{bar} {progress:.0f}%", style=color)
+    content.append(f"  ⏱ {elapsed_time}", style=color)
 
     return Panel(
         content,
         box=box.ROUNDED,
         border_style=f"bold {color}",
-        padding=(0, 1)
+        padding=(0, 1),
+        width=60
     )
 
 
