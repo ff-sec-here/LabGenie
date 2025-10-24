@@ -44,18 +44,17 @@ def create_epic_startup_banner() -> Panel:
         "bold yellow",
         "bold green"]
 
+    banner.append("     ", style="bold")  # Center alignment
     for i, char in enumerate("⚡ LAB GENIE ⚡"):
         banner.append(char, style=title_colors[i % len(title_colors)])
     banner.append("\n", style="bold")
 
     # Subtitle
-    banner.append("━━━━━━━━━━━━━━━\n", style="cyan")
-    banner.append("Vulnerabilities → Labs\n", style="bold white")
-    banner.append("━━━━━━━━━━━━━━━\n", style="cyan")
+    banner.append("     ━━━━━━━━━━━━━━━\n", style="cyan")
+    banner.append("     Vulnerabilities → Labs\n", style="bold white")
+    banner.append("     ━━━━━━━━━━━━━━━\n", style="cyan")
 
-    banner.append("🧞 ✨ 🔮 ⚡ 💫 🌟\n", style="")
-    banner.append("Configurable AI Provider:\n", style="dim")
-    banner.append("Gemini or Vertex", style="dim")
+    banner.append("     🧞 ✨ 🔮 ⚡ 💫 🌟\n", style="")
 
     return Panel(
         banner,
@@ -201,7 +200,7 @@ def create_step_animation(
         box=box.ROUNDED,
         border_style=f"bold {color}",
         padding=(0, 1),
-        width=60
+        width=38
     )
 
 

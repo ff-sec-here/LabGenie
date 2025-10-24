@@ -375,6 +375,7 @@ class LabGenieWorkflow:
         self.output_base = output_dir or Path("./output")
         self.output_base.mkdir(exist_ok=True)
         self.output_dir = None
+        self._custom_output = output_dir is not None
 
         self.debug_mode = debug_mode
         # Always initialize logger for duration tracking
@@ -451,10 +452,16 @@ class LabGenieWorkflow:
         # Show provider info compactly if verbose
         if self.verbose:
             provider_name = "Vertex AI" if self.provider == "vertex" else "Gemini API"
+            # Show custom output path if provided, otherwise show default pattern
+            if self._custom_output:
+                output_display = str(self.output_base)
+            else:
+                output_display = f"/output/{self.run_id}"
+            
             info_text = (
                 f"[dim]Provider: {provider_name} | "
                 f"Run: {self.run_id} | "
-                f"Output: {self.output_base.absolute()}[/dim]"
+                f"Output: {output_display}[/dim]"
             )
             console.print(info_text)
         console.print()
@@ -567,6 +574,7 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
+            
         )
         console.print(success_msg)
         return result
@@ -645,6 +653,7 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
+            
         )
         console.print(header)
 
@@ -742,6 +751,7 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
+            
         )
         console.print(success_msg)
         return self.output_dir
@@ -810,7 +820,9 @@ class LabGenieWorkflow:
             title="[bold magenta]🚀 Get Started[/bold magenta]",
             border_style="green",
             box=box.ROUNDED,
-            padding=(0, 1)
+            padding=(0, 1),
+            width=60
+            
         )
         console.print(next_steps)
 
@@ -825,6 +837,7 @@ class LabGenieWorkflow:
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
+                
             ))
 
         # Input prompt panel
@@ -834,10 +847,9 @@ class LabGenieWorkflow:
                 "[dim](Provide a URL to a blog post or security advisory)[/dim]",
                 border_style="cyan",
                 box=box.ROUNDED,
-                padding=(
-                    0,
-                    1),
-                width=60))
+                padding=(0, 1),
+                width=60
+            ))
 
         url = Prompt.ask("🔗 [cyan]URL[/cyan]")
 
@@ -848,6 +860,7 @@ class LabGenieWorkflow:
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
+                
             )
             console.print(error_panel)
             return
@@ -857,7 +870,7 @@ class LabGenieWorkflow:
                 f"[dim]Processing: {url}[/dim]",
                 border_style="blue",
                 box=box.ROUNDED,
-                padding=(0, 1),
+                padding=(0, 1), 
                 width=60
             )
             console.print(info_panel)
@@ -965,7 +978,8 @@ class LabGenieWorkflow:
             f"⏱️  Total Duration: {self.logger.get_total_elapsed()}\n"
             f"🔄 Total Actions Logged: {len(self.logger.actions)}",
             title="📈 Performance Metrics",
-            border_style="green" if success_rate == 100 else "yellow"
+            border_style="green" if success_rate == 100 else "yellow",
+            width=60
         )
         console.print(metrics_panel)
         console.print()
@@ -980,6 +994,7 @@ def run_wizard():
         box=box.DOUBLE_EDGE,
         padding=(0, 1),
         width=60
+        
     )
     console.print(wizard_header)
     console.print()
@@ -1024,6 +1039,7 @@ def run_wizard():
         border_style="cyan",
         box=box.ROUNDED,
         width=60
+        
     )
     console.print(step3_panel)
     debug_mode = Confirm.ask("🔍 Enable debug mode?", default=False)
@@ -1036,6 +1052,7 @@ def run_wizard():
         box=box.ROUNDED,
         padding=(0, 1),
         width=60
+        
     )
     console.print(complete_panel)
     console.print()
@@ -1153,6 +1170,7 @@ For more information, visit: https://github.com/yourusername/LabGenie
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
+            
         )
         console.print(processing_panel)
         console.print()
@@ -1215,6 +1233,7 @@ For more information, visit: https://github.com/yourusername/LabGenie
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
+                
             )
             console.print(debug_panel)
             console.print()
@@ -1226,6 +1245,7 @@ For more information, visit: https://github.com/yourusername/LabGenie
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
+            
         )
         console.print(processing_panel)
         console.print()
