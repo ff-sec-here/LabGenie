@@ -6,14 +6,6 @@ LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability wr
 
 ---
 
-## Features
-
-- **Automated Lab Generation** - From URL to working lab in minutes
-- **Beautiful CLI** - Rich terminal UI with animations and progress tracking
-- **Safety First** - All exploits target localhost only, with authorization checks
-- **Dual AI Providers** - Choose between Gemini API or Vertex AI
-- **Complete Artifacts** - Generates code, configs, tests, and documentation
-- **Production Ready** - Clean, optimized, and well-documented
 
 ---
 
@@ -148,11 +140,6 @@ This tool is provided for educational and research purposes. Use responsibly.
 ---
 
 ## Acknowledgments
-
-- Built on the n8n Lab Core Planner workflow
-- Powered by Google Gemini AI
-- Terminal UI by Rich library
-- Markdown conversion via Jina.ai
 
 ---
 
