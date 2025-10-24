@@ -6,9 +6,6 @@ LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability wr
 
 ---
 
-
----
-
 ## Quick Start
 
 ### Prerequisites
