@@ -234,7 +234,8 @@ def create_success_banner(
         box=box.DOUBLE_EDGE,
         border_style="bold green",
         title="[bold white]🏆 COMPLETE 🏆[/bold white]",
-        padding=(1, 1)
+        padding=(1, 1),
+        width=60
     )
 
 
