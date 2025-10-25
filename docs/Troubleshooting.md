@@ -157,14 +157,7 @@ If you encounter an issue not listed here:
 1. **Check the logs**: Look in `logs/` and `logs/agent_errors/` for detailed error messages
 2. **Review the documentation**: See `docs/Architecture.md` for system details
 3. **Check your configuration**: Verify API keys and environment variables
-4. **Test with a known URL**: Try a simple, public vulnerability write-up first
 
----
+**OR**
 
-## Common Tips
-
-- **First time setup**: Always run `setup.sh` first
-- **API Keys**: Store them in `.env` file instead of exporting each time
-- **Virtual Environment**: Use `venv` to avoid dependency conflicts
-- **Provider Selection**: Gemini API is easier for beginners, Vertex AI for enterprise
-- **Network Issues**: Some corporate networks block AI APIs - try from a different network
+Raise an issue here in this repo, Every problem have a fix!
