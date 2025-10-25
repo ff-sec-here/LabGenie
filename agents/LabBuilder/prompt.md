@@ -14,7 +14,6 @@
 ✓ HOMEPAGE: Must NOT contain reproduction steps (use separate REPRO.md)
 ✓ EXACT WORDING: Preserve all UI labels, button text, field names verbatim
 ✓ MINIMAL SCOPE: Only features/pages specified in Planner JSON
-✓ Dont use npm, yarn, or any other package manager, Try using static files. 
 ✓ LOCAL ONLY: All tests/PoCs target localhost/127.0.0.1
 ✓ RUNNABLE CODE: Production-quality, copy-pasteable
 ✓ JSON OUTPUT: Exactly ONE JSON object, nothing else
@@ -178,7 +177,6 @@ def health():
 
 ### DEPENDENCIES
 ├─ requirements.txt (Python)
-   Avoid using package managers like npm, yarn, or composer. Use static files instead.
 
 ### DOCUMENTATION
 ├─ README.md (build steps, usage, NO reproduction steps)
@@ -249,6 +247,87 @@ def health():
    CMD ["python", "app/main.py"]
    ```
    
+
+## NPM Installation Best Practices
+
+## 1. Use package-lock.json
+Always commit `package-lock.json` to ensure consistent installations:
+
+```json
+// filepath: package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "lockfileVersion": 2,
+  "requires": true
+}
+```
+
+## 2. Specify Exact Versions
+Use exact versions instead of ranges to prevent conflicts:
+
+```json
+// filepath: package.json
+{
+  "dependencies": {
+    "express": "4.18.2",
+    "react": "18.2.0"
+  }
+}
+```
+
+## 3. Use .npmrc Configuration
+Create a `.npmrc` file for reliable installations:
+
+```text
+// filepath: .npmrc
+save-exact=true
+audit=false
+fund=false
+prefer-offline=true
+legacy-peer-deps=true
+```
+
+## 4. Add npm Scripts for Clean Installation
+Add these scripts to package.json:
+
+```json
+{
+  "scripts": {
+    "clean": "rm -rf node_modules package-lock.json",
+    "reset": "npm run clean && npm install",
+    "install:clean": "npm cache clean --force && npm install"
+  }
+}
+```
+
+## 5. Use Docker Multi-Stage Build
+For Docker, use multi-stage builds with npm ci:
+
+```dockerfile
+// filepath: Dockerfile
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+```
+
+## 6. Add Error Recovery Commands
+Add to your troubleshooting docs:
+
+```bash
+# If npm install fails:
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install --no-optional
+```
+
+
 ## CRITICAL OUTPUT REQUIREMENTS
 
 **FORMAT:**
