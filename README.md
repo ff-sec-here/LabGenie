@@ -111,7 +111,7 @@ The lab output dir name can be passed via --output-dir flag.
 LabGenie implements a four-stage AI agent workflow.
 For detailed information about the system architecture, agent designs, and technical implementation, see:
 
-** [docs/Architecture.md](docs/Architecture.md)**
+**[docs/Architecture.md](docs/Architecture.md)**
 
 ---
 
