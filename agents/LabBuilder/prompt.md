@@ -14,7 +14,7 @@
 ✓ HOMEPAGE: Must NOT contain reproduction steps (use separate REPRO.md)
 ✓ EXACT WORDING: Preserve all UI labels, button text, field names verbatim
 ✓ MINIMAL SCOPE: Only features/pages specified in Planner JSON
-✓ NO NPM INSTALL: Do not reference or require `npm install`; produce code and build steps that work without it to avoid deployment issues
+✓ Dont use npm, yarn, or any other package manager, Try using static files. 
 ✓ LOCAL ONLY: All tests/PoCs target localhost/127.0.0.1
 ✓ RUNNABLE CODE: Production-quality, copy-pasteable
 ✓ JSON OUTPUT: Exactly ONE JSON object, nothing else
@@ -178,10 +178,7 @@ def health():
 
 ### DEPENDENCIES
 ├─ requirements.txt (Python)
-│  OR package.json (Node.js)
-│  OR composer.json (PHP)
-└─ Lock files (package-lock.json, poetry.lock, etc.)
-   - Avoid `npm install`; rely on lock files and commands like `npm ci` or pre-bundled dependencies so labs remain deployable without extra installs
+   Avoid using package managers like npm, yarn, or composer. Use static files instead.
 
 ### DOCUMENTATION
 ├─ README.md (build steps, usage, NO reproduction steps)
