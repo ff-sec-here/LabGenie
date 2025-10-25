@@ -36,13 +36,10 @@ echo ""
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-# Upgrade pip
-echo "Upgrading pip..."
-pip install --upgrade pip --quiet
 
 # Install dependencies
 echo "Installing dependencies..."
-pip install -r requirements.txt --quiet
+pip install -r requirements.txt 
 
 echo "✅ Dependencies installed"
 echo ""

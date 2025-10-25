@@ -4,13 +4,13 @@ LabGenie - Vulnerability Lab Generator
 Transforms security write-ups into production-ready vulnerable labs
 """
 
-import os
-import sys
-import json
-import re
-import time
-import asyncio
 import argparse
+import asyncio
+import json
+import os
+import re
+import sys
+import time
 import traceback
 import uuid
 from datetime import datetime
@@ -22,7 +22,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
 from rich import box
-from rich.live import Live
 from rich.progress import (
     Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 )
@@ -32,11 +31,11 @@ from agents.WriteupParser.agent import WriteupParserAgent
 from agents.LabCorePlanner.agent import LabCorePlannerAgent
 from agents.LabBuilder.agent import LabBuilderAgent
 
-# Import ULTRA animations
-from helpers.genie_animation_ultra import (
-    create_epic_startup_banner,
-    create_step_animation,
-    create_success_banner
+# Animation helpers
+from helpers.genie_animation import (
+    display_workflow_banner,
+    execute_step_with_animation,
+    display_success_banner
 )
 
 console = Console()
@@ -444,27 +443,20 @@ class LabGenieWorkflow:
             return default_config
 
     def display_banner(self):
-        """Display the EPIC LabGenie welcome banner with animation"""
-        # Epic banner (left-aligned, compact)
-        console.print()
-        console.print(create_epic_startup_banner())
+        """Display the LabGenie startup banner via helper animations"""
+        output_display = (
+            str(self.output_base)
+            if self._custom_output
+            else f"/output/{self.run_id}"
+        )
 
-        # Show provider info compactly if verbose
-        if self.verbose:
-            provider_name = "Vertex AI" if self.provider == "vertex" else "Gemini API"
-            # Show custom output path if provided, otherwise show default pattern
-            if self._custom_output:
-                output_display = str(self.output_base)
-            else:
-                output_display = f"/output/{self.run_id}"
-            
-            info_text = (
-                f"[dim]Provider: {provider_name} | "
-                f"Run: {self.run_id} | "
-                f"Output: {output_display}[/dim]"
-            )
-            console.print(info_text)
-        console.print()
+        display_workflow_banner(
+            console=console,
+            provider=self.provider,
+            run_id=self.run_id,
+            output_display=output_display,
+            verbose=self.verbose
+        )
 
     async def run_step_with_genie(
             self,
@@ -473,111 +465,17 @@ class LabGenieWorkflow:
             description: str,
             agent_input: Any = None):
         """Run a workflow step with ANIMATED loading screen and timer"""
-        # Always log step for timer tracking
-        if self.logger:
-            self.logger.start_step(step_name, description)
-
-        result = None
-        error = None
-        step_start = time.time()
-
-        async def run_task():
-            nonlocal result, error
-            try:
-                if self.debug_mode:
-                    self.logger.log_action(
-                        f"Calling agent: {step_name}",
-                        "Sending request to LLM",
-                        "processing")
-
-                result = await coro
-
-                if self.debug_mode:
-                    if isinstance(result, dict):
-                        if result.get("error"):
-                            self.logger.log_action(
-                                "Agent returned error", result.get(
-                                    "reason", ""), "error")
-                        else:
-                            result_keys = list(result.keys())[:5]
-                            self.logger.log_action(
-                                "Agent response received", f"Keys: {result_keys}", "success")
-                    else:
-                        self.logger.log_action(
-                            "Agent response received", f"Type: {
-                                type(result)}", "success")
-            except Exception as e:
-                error = e
-                if self.debug_mode:
-                    self.logger.log_action(
-                        "Exception occurred", str(e), "error")
-
-        def make_display():
-            elapsed = time.time() - step_start
-            total_elapsed = self.logger.get_total_elapsed() if self.logger else "00:00:00"
-
-            # Format elapsed time consistently in HH:MM:SS
-            hours = int(elapsed // 3600)
-            minutes = int((elapsed % 3600) // 60)
-            seconds = int(elapsed % 60)
-            elapsed_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-            # Simulate progress (based on time, capped at 90%)
-            progress = min(90, (elapsed / 30) * 100)  # Assume 30s average
-
-            # Use ultra animation function with clear time labels
-            panel = create_step_animation(
-                step_name=step_name,
-                description=description,
-                progress=progress,
-                elapsed_time=f"Step: {elapsed_str} | Workflow: {total_elapsed}"
-            )
-            return panel
-
-        task = asyncio.create_task(run_task())
-
-        with Live(make_display(), refresh_per_second=4, console=console, transient=True) as live:
-            while not task.done():
-                live.update(make_display())
-                await asyncio.sleep(0.33)
-
-        step_duration = time.time() - step_start
-
-        if error:
-            if self.logger:
-                self.logger.end_step(False, str(error))
-            console.print(
-                f"[bold red]❌ {step_name} failed: {error}[/bold red]")
-            if self.verbose:
-                console.print(f"[dim]Duration: {step_duration:.2f}s[/dim]\n")
-            raise error  # type: ignore
-
-        # Log completion
-        result_summary = "Success"
-        if result and isinstance(result, dict):
-            if "files" in result:  # type: ignore
-                result_summary = f"Generated {len(result['files'])} files"  # type: ignore
-            elif "markdown" in result:  # type: ignore
-                markdown_len = len(result['markdown'])  # type: ignore
-                result_summary = f"Markdown length: {markdown_len} chars"
-        if self.logger:
-            self.logger.end_step(True, result_summary)
-
-        agent_name = step_name.replace(" ", "_")
-        self.file_logger.log_agent_response(agent_name, result, agent_input)
-
-        # Success message
-        success_msg = Panel(
-            f"[bold green]✅ {step_name} Complete![/bold green]\n"
-            f"[dim]⏱️  {step_duration:.1f}s[/dim]",
-            border_style="green",
-            box=box.ROUNDED,
-            padding=(0, 1),
-            width=60
-            
+        return await execute_step_with_animation(
+            step_name=step_name,
+            coro=coro,
+            description=description,
+            console=console,
+            logger=self.logger,
+            file_logger=self.file_logger,
+            debug_mode=self.debug_mode,
+            verbose=self.verbose,
+            agent_input=agent_input
         )
-        console.print(success_msg)
-        return result
 
     async def step_1_markdown_conversion(self, url: str) -> Dict[str, Any]:
         """Step 1: Convert write-up URL to markdown"""
@@ -653,7 +551,6 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
-            
         )
         console.print(header)
 
@@ -751,7 +648,6 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
-            
         )
         console.print(success_msg)
         return self.output_dir
@@ -766,9 +662,7 @@ class LabGenieWorkflow:
         # Get total time
         total_time = self.logger.get_total_elapsed() if self.logger else "00:00:00"
 
-        # Epic success banner with total time
-        console.print()
-        console.print(create_success_banner(lab_name, file_count, total_time))
+        display_success_banner(console, lab_name, file_count, total_time)
 
         # Compact summary table
         table = Table(
@@ -822,7 +716,6 @@ class LabGenieWorkflow:
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
-            
         )
         console.print(next_steps)
 
@@ -837,7 +730,6 @@ class LabGenieWorkflow:
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
-                
             ))
 
         # Input prompt panel
@@ -860,7 +752,6 @@ class LabGenieWorkflow:
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
-                
             )
             console.print(error_panel)
             return
@@ -870,7 +761,7 @@ class LabGenieWorkflow:
                 f"[dim]Processing: {url}[/dim]",
                 border_style="blue",
                 box=box.ROUNDED,
-                padding=(0, 1), 
+                padding=(0, 1),
                 width=60
             )
             console.print(info_panel)
@@ -994,7 +885,6 @@ def run_wizard():
         box=box.DOUBLE_EDGE,
         padding=(0, 1),
         width=60
-        
     )
     console.print(wizard_header)
     console.print()
@@ -1039,7 +929,6 @@ def run_wizard():
         border_style="cyan",
         box=box.ROUNDED,
         width=60
-        
     )
     console.print(step3_panel)
     debug_mode = Confirm.ask("🔍 Enable debug mode?", default=False)
@@ -1052,7 +941,6 @@ def run_wizard():
         box=box.ROUNDED,
         padding=(0, 1),
         width=60
-        
     )
     console.print(complete_panel)
     console.print()
@@ -1170,7 +1058,6 @@ For more information, visit: https://github.com/yourusername/LabGenie
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
-            
         )
         console.print(processing_panel)
         console.print()
@@ -1223,32 +1110,27 @@ For more information, visit: https://github.com/yourusername/LabGenie
             provider=args.provider,  # None = auto-detect
             api_key=args.api_key
         )
-
         workflow.display_banner()
 
         if workflow.debug_mode:
             debug_panel = Panel(
-                "[bold green]🔍 Debug Mode: ENABLED[/bold green]",
-                border_style="green",
+                "[bold yellow]🐞 Debug Mode Enabled[/bold yellow]",
+                border_style="yellow",
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
-                
             )
             console.print(debug_panel)
-            console.print()
 
         # Processing message
         processing_panel = Panel(
-            f"[dim]Processing URL: {args.url}[/dim]",
-            border_style="blue",
+            "[bold cyan]🤖 Processing input...[/bold cyan]",
+            border_style="cyan",
             box=box.ROUNDED,
             padding=(0, 1),
             width=60
-            
         )
         console.print(processing_panel)
-        console.print()
 
         # Always start workflow timer
         if workflow.logger:

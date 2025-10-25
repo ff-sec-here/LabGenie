@@ -6,7 +6,7 @@
 - **Style:** Production-realistic app, exact UI wording, rich styling
 
 ## QUICK PRIORITIES
-✓ PRODUCTION-REALISTIC: Build app as it would exist in real production
+✓ PRODUCTION-REALISTIC-DESGIN: Build app as it would exist in real production
 ✓ NO SIMULATION: No "developer simulation" features, fake data generators, or meta-commentary
 ✓ NO DATABASE unless absolutely required (prefer SQLite/JSON/in-memory)
 ✓ DOCKERFILE: **ALWAYS REQUIRED** - Generate Dockerfile for every lab
@@ -14,6 +14,7 @@
 ✓ HOMEPAGE: Must NOT contain reproduction steps (use separate REPRO.md)
 ✓ EXACT WORDING: Preserve all UI labels, button text, field names verbatim
 ✓ MINIMAL SCOPE: Only features/pages specified in Planner JSON
+✓ NO NPM INSTALL: Do not reference or require `npm install`; produce code and build steps that work without it to avoid deployment issues
 ✓ LOCAL ONLY: All tests/PoCs target localhost/127.0.0.1
 ✓ RUNNABLE CODE: Production-quality, copy-pasteable
 ✓ JSON OUTPUT: Exactly ONE JSON object, nothing else
@@ -180,6 +181,7 @@ def health():
 │  OR package.json (Node.js)
 │  OR composer.json (PHP)
 └─ Lock files (package-lock.json, poetry.lock, etc.)
+   - Avoid `npm install`; rely on lock files and commands like `npm ci` or pre-bundled dependencies so labs remain deployable without extra installs
 
 ### DOCUMENTATION
 ├─ README.md (build steps, usage, NO reproduction steps)

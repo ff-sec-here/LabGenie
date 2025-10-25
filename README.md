@@ -2,11 +2,13 @@
 
 **Transform vulnerability write-ups into fully functional, runnable security labs**
 
-LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability write-up URL and produces a complete, testable lab environment ready for security research and education.
+LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability write-up URL and produces a complete, runnable lab environment ready for security research and education.
 
 ---
 
 ## Quick Start
+
+![alt text](docs/images/labgenie.png)
 
 ### Prerequisites
 
@@ -83,10 +85,10 @@ $ python labgenie.py
 
 The CLI will then:
 
-1. **🔮 Convert** the write-up to structured markdown
-2. **🔍 Parse** vulnerability information and reproduction steps  
-3. **📋 Plan** the lab architecture and components
-4. **🛠️ Build** complete, runnable lab artifacts
+1. **Convert** the write-up to structured markdown
+2. **Parse** vulnerability information and reproduction steps  
+3. **Plan** the lab architecture and components
+4. **Build** complete, runnable lab artifacts
 
 ### Output
 
@@ -98,22 +100,18 @@ output/
     ├── lab_manifest.json         # Complete lab metadata
     ├── README.md                 # Lab setup instructions
     ├── docker-compose.yml        # Container orchestration
-    ├── src/                      # Application source code
-    ├── tests/                    # Verification scripts
-    └── exploits/                 # PoC scripts (localhost only)
+    └── src/                      # Application source code
 ```
 
-The lab name is automatically extracted from the vulnerability write-up or generated with a timestamp.
-
+The lab output dir name can be passed via --output-dir flag.
 ---
 
 ## Architecture
 
-LabGenie implements a four-stage AI agent workflow that converts a vulnerability write-up to a complete, runnable lab environment.
-
+LabGenie implements a four-stage AI agent workflow.
 For detailed information about the system architecture, agent designs, and technical implementation, see:
 
-**📖 [docs/Architecture.md](docs/Architecture.md)**
+** [docs/Architecture.md](docs/Architecture.md)**
 
 ---
 
@@ -130,13 +128,9 @@ Contributions are welcome!
 
 ---
 
-## License
-
-This tool is provided for educational and research purposes. Use responsibly.
-
----
-
 ## Acknowledgments
+
+LabGenie is inspired by the paper [**From CVE Entries to Verifiable Exploits**](https://arxiv.org/pdf/2509.01835). Shoutout to the researchers at **UC Santa Barbara** who created it—it's a wonderful multi-agent framework that generates **POC** code from **CVE** entries. Their approach inspired LabGenie, which tackles a related challenge from a different angle. Huge thanks to the contributors of the whitepaper for lighting the way.
 
 ---
 
