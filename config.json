@@ -1,9 +1,9 @@
 {
   "models": {
-    "WriteUpToMarkdown": "gemini-2.5-flash",
-    "WriteupParser": "models/gemini-2.5-pro",
-    "LabCorePlanner": "models/gemini-2.5-pro",
-    "LabBuilder": "models/gemini-2.5-pro"
+    "WriteUpToMarkdown": "claude-haiku-4-5",
+    "WriteupParser": "claude-opus-4-8",
+    "LabCorePlanner": "claude-opus-4-8",
+    "LabBuilder": "claude-opus-4-8"
   },
-  "provider": "gemini"
+  "provider": "claude"
 }

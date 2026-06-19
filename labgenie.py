@@ -242,11 +242,16 @@ def auto_detect_provider() -> Optional[str]:
     """Auto-detect which provider is configured.
 
     Priority:
-    1. Vertex AI (if GOOGLE_CLOUD_PROJECT is set)
-    2. Gemini API (if GOOGLE_API_KEY is set)
-    3. None (if neither is configured)
+    1. Claude (Anthropic) — if ANTHROPIC_API_KEY is set (default)
+    2. Vertex AI — if GOOGLE_CLOUD_PROJECT is set
+    3. Gemini API — if GOOGLE_API_KEY is set
+    4. None — if none are configured
     """
-    # Check Vertex first (enterprise priority)
+    # Check Claude first (default provider)
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return "claude"
+
+    # Check Vertex (enterprise)
     if os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT"):
         return "vertex"
 
@@ -270,6 +275,14 @@ def check_provider_config(provider: str, api_key: Optional[str] = None):
             return False, (
                 "GOOGLE_CLOUD_PROJECT environment variable not set.\n"
                 "Vertex AI requires a GCP project ID to function."
+            )
+        return True, None
+    if provider == "claude":
+        key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        if not key:
+            return False, (
+                "ANTHROPIC_API_KEY environment variable not set.\n"
+                "Claude provider requires an Anthropic API key."
             )
         return True, None
     # gemini
@@ -326,17 +339,24 @@ class LabGenieWorkflow:
                 console.print(
                     "\n[yellow]Please configure one of the following:[/yellow]\n")
                 console.print(
-                    "[bold]Option 1: Gemini API (Recommended)[/bold]")
+                    "[bold]Option 1: Claude / Anthropic (Default)[/bold]")
+                console.print("  export ANTHROPIC_API_KEY='your-api-key'")
+                console.print(
+                    "  Get key: https://console.anthropic.com/\n")
+                console.print("[bold]Option 2: Gemini API[/bold]")
                 console.print("  export GOOGLE_API_KEY='your-api-key'")
                 console.print(
                     "  Get key: https://makersuite.google.com/app/apikey\n")
-                console.print("[bold]Option 2: Vertex AI (Enterprise)[/bold]")
+                console.print("[bold]Option 3: Vertex AI (Enterprise)[/bold]")
                 console.print(
                     "  export GOOGLE_CLOUD_PROJECT='your-project-id'")
                 console.print("  gcloud auth application-default login\n")
                 sys.exit(1)
 
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
+        if self.provider == "claude":
+            self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        else:
+            self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
 
         ok, error_msg = check_provider_config(self.provider, self.api_key)
         if not ok:
@@ -1014,14 +1034,14 @@ For more information, visit: https://github.com/yourusername/LabGenie
     parser.add_argument(
         '--provider',
         type=str,
-        choices=['gemini', 'vertex'],
-        help='AI provider backend (default: auto-detect from environment)'
+        choices=['claude', 'gemini', 'vertex'],
+        help='AI provider backend (default: auto-detect from environment; claude preferred)'
     )
 
     parser.add_argument(
         '--api-key',
         type=str,
-        help='Gemini API key (overrides GOOGLE_API_KEY env)'
+        help='API key for the selected provider (overrides env var)'
     )
 
     parser.add_argument(

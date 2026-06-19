@@ -18,8 +18,8 @@ class WriteupParserAgent(BaseAgent):
             api_key: str | None = None,
             provider: str | None = None,
             model: str | None = None):
-        # Use default models/gemini-2.5-pro if not specified
-        model = model or "models/gemini-2.5-pro"
+        # Use default claude-opus-4-8 if not specified
+        model = model or "claude-opus-4-8"
         prompt_path = Path(__file__).parent / "prompt.md"
         super().__init__(
             api_key,
@@ -28,14 +28,19 @@ class WriteupParserAgent(BaseAgent):
             provider=provider)
 
         # Optimized config for precise information extraction
-        if GenerationConfig is not None:
+        if self.provider == "claude":
+            self.generation_config = {
+                "temperature": 0.2,
+                "max_tokens": 8192,
+            }
+        elif self.provider == "vertex" and GenerationConfig is not None:
             self.generation_config = GenerationConfig(
                 temperature=0.2,
                 top_p=0.9,
                 top_k=20,
                 max_output_tokens=8192,
             )
-        else:
+        else:  # gemini — always use plain dict
             self.generation_config = {
                 "temperature": 0.2,
                 "top_p": 0.9,

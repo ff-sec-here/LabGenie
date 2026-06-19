@@ -36,6 +36,11 @@ try:
 except Exception:
     genai = None  # type: ignore
 
+try:
+    import anthropic as anthropic_sdk  # type: ignore
+except Exception:
+    anthropic_sdk = None  # type: ignore
+
 
 class BaseAgent:
     """Base class for all agents with pluggable AI backend"""
@@ -58,8 +63,8 @@ class BaseAgent:
         self.provider = (
             provider or os.getenv(
                 "LABGENIE_PROVIDER",
-                "gemini")).lower()
-        if self.provider not in ("vertex", "gemini"):
+                "claude")).lower()
+        if self.provider not in ("vertex", "gemini", "claude"):
             self.provider = "gemini"
 
         self.model_name = model
@@ -93,6 +98,22 @@ class BaseAgent:
                 max_output_tokens=8192,
                 candidate_count=1,
             )
+
+        elif self.provider == "claude":
+            if anthropic_sdk is None:
+                raise RuntimeError(
+                    "anthropic package is required for provider "
+                    "'claude'. Install it with: pip install anthropic>=0.40.0")
+            self._claude_api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+            if not self._claude_api_key:
+                raise ValueError(
+                    "Claude provider requires ANTHROPIC_API_KEY. "
+                    "Set it with: export ANTHROPIC_API_KEY='your-key'")
+
+            self.generation_config = {
+                "temperature": 0.4,
+                "max_tokens": 8192,
+            }
 
         else:  # gemini API
             if genai is None:
@@ -157,6 +178,25 @@ class BaseAgent:
                             len(prompt)} chars")
 
             return await asyncio.to_thread(_generate_sync_vertex)
+
+        # Claude (Anthropic) API path
+        if self.provider == "claude":
+            def _generate_sync_claude():
+                client = anthropic_sdk.Anthropic(api_key=self._claude_api_key)
+                try:
+                    response = client.messages.create(
+                        model=self.model_name,
+                        max_tokens=self.generation_config.get("max_tokens", 8192),
+                        system=self.system_instruction,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=self.generation_config.get("temperature", 0.4),
+                    )
+                    return response.content[0].text
+                except Exception as e:
+                    raise ValueError(
+                        f"Claude API generation failed: {str(e)}\nPrompt length: {len(prompt)} chars")
+
+            return await asyncio.to_thread(_generate_sync_claude)
 
         # Gemini API path
         def _generate_sync_gemini():
