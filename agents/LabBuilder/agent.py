@@ -21,8 +21,8 @@ class LabBuilderAgent(BaseAgent):
             api_key: str | None = None,
             provider: str | None = None,
             model: str | None = None):
-        # Use default models/gemini-2.5-pro if not specified
-        model = model or "models/gemini-2.5-pro"
+        # Use default claude-opus-4-8 if not specified
+        model = model or "claude-opus-4-8"
         prompt_path = Path(__file__).parent / "prompt.md"
         super().__init__(
             api_key,
@@ -32,7 +32,12 @@ class LabBuilderAgent(BaseAgent):
 
         # Override generation config for LabBuilder - needs higher token limit
         # for complete labs
-        if GenerationConfig is not None:
+        if self.provider == "claude":
+            self.generation_config = {
+                "temperature": 0.3,
+                "max_tokens": 16000,
+            }
+        elif self.provider == "vertex" and GenerationConfig is not None:
             self.generation_config = GenerationConfig(
                 temperature=0.3,
                 top_p=0.9,
@@ -40,7 +45,7 @@ class LabBuilderAgent(BaseAgent):
                 max_output_tokens=65536,
                 candidate_count=1,
             )
-        else:
+        else:  # gemini — always use plain dict
             self.generation_config = {
                 "temperature": 0.3,
                 "top_p": 0.9,

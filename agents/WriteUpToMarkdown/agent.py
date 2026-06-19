@@ -22,8 +22,8 @@ class WriteUpToMarkdownAgent(BaseAgent):
             api_key: str | None = None,
             provider: str | None = None,
             model: str | None = None):
-        # Use default gemini-2.5-flash because this a lightweight task
-        model = model or "gemini-2.5-flash"
+        # Use default claude-haiku-4-5 because this is a lightweight task
+        model = model or "claude-haiku-4-5"
         prompt_path = Path(__file__).parent / "prompt.md"
         super().__init__(
             api_key,
@@ -33,14 +33,19 @@ class WriteUpToMarkdownAgent(BaseAgent):
 
         # Override generation config - lower temperature for consistent
         # validation decisions
-        if GenerationConfig is not None:
+        if self.provider == "claude":
+            self.generation_config = {
+                "temperature": 0.4,
+                "max_tokens": 15000,
+            }
+        elif self.provider == "vertex" and GenerationConfig is not None:
             self.generation_config = GenerationConfig(
                 temperature=0.4,
                 top_p=0.9,
                 top_k=40,
                 max_output_tokens=15000,
             )
-        else:
+        else:  # gemini — always use plain dict
             self.generation_config = {
                 "temperature": 0.4,
                 "top_p": 0.9,

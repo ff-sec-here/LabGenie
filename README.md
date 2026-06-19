@@ -13,8 +13,9 @@ LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability wr
 ### Prerequisites
 
 - Python 3.10 or higher
-- **Option A**: Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey)) - **Recommended**
-- **Option B**: Google Cloud Project with Vertex AI enabled
+- **Option A**: Anthropic API key — **Default & Recommended**
+- **Option B**: Google Gemini API key
+- **Option C**: Google Cloud Project with Vertex AI enabled
 
 ### Installation
 
@@ -38,12 +39,18 @@ This will:
 
 3. **Configure your AI provider**
 
-**Option A: Gemini API (Recommended)**
+**Option A: Claude / Anthropic (Default)**
+```bash
+export ANTHROPIC_API_KEY='your-anthropic-api-key'
+```
+Get a key at [console.anthropic.com](https://console.anthropic.com/).
+
+**Option B: Gemini API**
 ```bash
 export GOOGLE_API_KEY='your-gemini-api-key'
 ```
 
-**Option B: Vertex AI (Enterprise)**
+**Option C: Vertex AI (Enterprise)**
 ```bash
 export GOOGLE_CLOUD_PROJECT='your-gcp-project-id'
 gcloud auth application-default login
@@ -61,11 +68,16 @@ cp .env.example .env
 # Activate virtual environment (if not already active)
 source venv/bin/activate
 
-# Interactive mode (default)
+# Interactive mode (default — uses Claude if ANTHROPIC_API_KEY is set)
 python labgenie.py
 
 # Direct URL mode
 python labgenie.py --url https://example.com/vuln-writeup
+
+# Explicitly choose a provider
+python labgenie.py --url https://example.com/vuln --provider claude
+python labgenie.py --url https://example.com/vuln --provider gemini
+python labgenie.py --url https://example.com/vuln --provider vertex
 
 # Debug mode for detailed output
 python labgenie.py --debug

@@ -1,6 +1,7 @@
 # Core Dependencies
 google-cloud-aiplatform>=1.38.0
 google-generativeai>=0.7.0
+anthropic>=0.40.0
 rich>=13.7.0
 httpx>=0.27.0
 python-dotenv>=1.0.0
