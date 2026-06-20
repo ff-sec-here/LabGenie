@@ -33,7 +33,7 @@ class WriteUpToMarkdownAgent(BaseAgent):
 
         # Override generation config - lower temperature for consistent
         # validation decisions
-        if self.provider == "claude":
+        if self.provider in ("claude", "claude-code"):
             self.generation_config = {
                 "temperature": 0.4,
                 "max_tokens": 15000,

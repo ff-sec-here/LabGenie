@@ -9,6 +9,7 @@ import asyncio
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import traceback
@@ -242,12 +243,25 @@ def auto_detect_provider() -> Optional[str]:
     """Auto-detect which provider is configured.
 
     Priority:
-    1. Claude (Anthropic) — if ANTHROPIC_API_KEY is set (default)
-    2. Vertex AI — if GOOGLE_CLOUD_PROJECT is set
-    3. Gemini API — if GOOGLE_API_KEY is set
-    4. None — if none are configured
+    1. Claude Code CLI subscription — if `claude` binary is logged in
+    2. Claude API — if ANTHROPIC_API_KEY is set
+    3. Vertex AI — if GOOGLE_CLOUD_PROJECT is set
+    4. Gemini API — if GOOGLE_API_KEY is set
+    5. None — if nothing is configured
     """
-    # Check Claude first (default provider)
+    import shutil
+    # Check Claude Code CLI first (subscription, no API key needed)
+    if shutil.which("claude") is not None:
+        try:
+            result = subprocess.run(
+                ["claude", "--version"],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return "claude-code"
+        except Exception:
+            pass
+
+    # Check Claude API
     if os.getenv("ANTHROPIC_API_KEY"):
         return "claude"
 
@@ -267,7 +281,15 @@ def check_provider_config(provider: str, api_key: Optional[str] = None):
 
     Returns (ok, error_msg).
     """
+    import shutil
     provider = provider.lower()
+    if provider == "claude-code":
+        if shutil.which("claude") is None:
+            return False, (
+                "Claude Code CLI not found.\n"
+                "Install it from https://claude.ai/download and log in with: claude login"
+            )
+        return True, None
     if provider == "vertex":
         project_id = os.getenv(
             "GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
@@ -339,15 +361,18 @@ class LabGenieWorkflow:
                 console.print(
                     "\n[yellow]Please configure one of the following:[/yellow]\n")
                 console.print(
-                    "[bold]Option 1: Claude / Anthropic (Default)[/bold]")
+                    "[bold]Option 1: Claude Code subscription (Recommended)[/bold]")
+                console.print("  Install Claude Code: https://claude.ai/download")
+                console.print("  Log in: claude login\n")
+                console.print("[bold]Option 2: Claude API[/bold]")
                 console.print("  export ANTHROPIC_API_KEY='your-api-key'")
                 console.print(
                     "  Get key: https://console.anthropic.com/\n")
-                console.print("[bold]Option 2: Gemini API[/bold]")
+                console.print("[bold]Option 3: Gemini API[/bold]")
                 console.print("  export GOOGLE_API_KEY='your-api-key'")
                 console.print(
                     "  Get key: https://makersuite.google.com/app/apikey\n")
-                console.print("[bold]Option 3: Vertex AI (Enterprise)[/bold]")
+                console.print("[bold]Option 4: Vertex AI (Enterprise)[/bold]")
                 console.print(
                     "  export GOOGLE_CLOUD_PROJECT='your-project-id'")
                 console.print("  gcloud auth application-default login\n")
@@ -355,6 +380,8 @@ class LabGenieWorkflow:
 
         if self.provider == "claude":
             self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        elif self.provider == "claude-code":
+            self.api_key = None  # no key needed — uses CLI session
         else:
             self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
 
@@ -367,7 +394,12 @@ class LabGenieWorkflow:
             sys.exit(1)
 
         # Initialize agents silently with models from config
-        models = self.config.get("models", {})
+        # Support both provider-scoped models and flat model maps
+        all_models = self.config.get("models", {})
+        if self.provider in all_models and isinstance(all_models[self.provider], dict):
+            models = all_models[self.provider]
+        else:
+            models = all_models  # flat legacy format
 
         agents_list = [
             ("WriteUpToMarkdown", WriteUpToMarkdownAgent, models.get("WriteUpToMarkdown")),
@@ -426,11 +458,32 @@ class LabGenieWorkflow:
             Configuration dictionary with model settings
         """
         default_config = {
+            "provider": "claude-code",
             "models": {
-                "WriteUpToMarkdown": "gemini-2.5-flash",
-                "WriteupParser": "models/gemini-2.5-pro",
-                "LabCorePlanner": "models/gemini-2.5-pro",
-                "LabBuilder": "models/gemini-2.5-pro"
+                "claude-code": {
+                    "WriteUpToMarkdown": "claude-haiku-4-5",
+                    "WriteupParser": "claude-sonnet-4-6",
+                    "LabCorePlanner": "claude-sonnet-4-6",
+                    "LabBuilder": "claude-sonnet-4-6"
+                },
+                "claude": {
+                    "WriteUpToMarkdown": "claude-haiku-4-5",
+                    "WriteupParser": "claude-opus-4-8",
+                    "LabCorePlanner": "claude-opus-4-8",
+                    "LabBuilder": "claude-opus-4-8"
+                },
+                "gemini": {
+                    "WriteUpToMarkdown": "gemini-2.5-flash",
+                    "WriteupParser": "models/gemini-2.5-pro",
+                    "LabCorePlanner": "models/gemini-2.5-pro",
+                    "LabBuilder": "models/gemini-2.5-pro"
+                },
+                "vertex": {
+                    "WriteUpToMarkdown": "gemini-2.5-flash",
+                    "WriteupParser": "gemini-2.5-pro",
+                    "LabCorePlanner": "gemini-2.5-pro",
+                    "LabBuilder": "gemini-2.5-pro"
+                }
             }
         }
 
@@ -1034,14 +1087,14 @@ For more information, visit: https://github.com/yourusername/LabGenie
     parser.add_argument(
         '--provider',
         type=str,
-        choices=['claude', 'gemini', 'vertex'],
-        help='AI provider backend (default: auto-detect from environment; claude preferred)'
+        choices=['claude-code', 'claude', 'gemini', 'vertex'],
+        help='AI provider backend (default: auto-detect; claude-code subscription preferred)'
     )
 
     parser.add_argument(
         '--api-key',
         type=str,
-        help='API key for the selected provider (overrides env var)'
+        help='API key for claude or gemini providers (overrides env var; not needed for claude-code)'
     )
 
     parser.add_argument(

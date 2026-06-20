@@ -2,22 +2,62 @@
 
 ## Common Issues
 
-### No Provider Configured
+### No AI Provider Configured
 
 **Error:**
 ```
 ❌ Error: No AI provider configured
 ```
 
-**Solution:** Set credentials for either provider
+**Solution:** Set up one of the following providers:
+
 ```bash
-# For Gemini (easier)
+# Option 1 — Claude Code subscription (no API costs)
+claude login   # after installing from https://claude.ai/download
+
+# Option 2 — Claude API
+export ANTHROPIC_API_KEY='your-key'
+
+# Option 3 — Gemini API
 export GOOGLE_API_KEY='your-key'
 
-# OR for Vertex (enterprise)
+# Option 4 — Vertex AI
 export GOOGLE_CLOUD_PROJECT='your-project-id'
 gcloud auth application-default login
 ```
+
+---
+
+### Claude Code CLI Not Found
+
+**Error:**
+```
+❌ Error: claude-code provider not configured
+Claude Code CLI not found.
+```
+
+**Solution:** Install Claude Code and log in:
+```bash
+# Download from https://claude.ai/download, then:
+claude login
+```
+
+---
+
+### Anthropic API Key Missing
+
+**Error:**
+```
+❌ Error: Claude provider not configured
+ANTHROPIC_API_KEY environment variable not set.
+```
+
+**Solution:**
+```bash
+export ANTHROPIC_API_KEY='your-key'
+```
+
+> **Note:** `ANTHROPIC_API_KEY` is a **separate pay-per-use key** from [console.anthropic.com](https://console.anthropic.com/). It is not your Claude.ai or Claude Code subscription. If you have a Claude Code subscription, use `--provider claude-code` instead.
 
 ---
 
@@ -29,16 +69,31 @@ gcloud auth application-default login
 GOOGLE_CLOUD_PROJECT environment variable not set
 ```
 
-**Solution:** Configure Vertex AI
+**Solution:**
 ```bash
-export LABGENIE_PROVIDER=vertex
 export GOOGLE_CLOUD_PROJECT='your-project-id'
 gcloud auth application-default login
 ```
 
 ---
 
-### Rate Limiting Issues
+### Gemini GenerationConfig Conflict
+
+**Error:**
+```
+Invalid input type. Expected a dict or GenerationConfig for generation_config.
+However, received an object of type: vertexai.generative_models...
+```
+
+**Solution:** Both `google-cloud-aiplatform` and `google-generativeai` are installed and conflicting. This is fixed in the latest version — pull the latest code and reinstall:
+```bash
+git pull
+pip install -r requirements.txt
+```
+
+---
+
+### Rate Limiting
 
 **Error:**
 ```
@@ -46,8 +101,10 @@ gcloud auth application-default login
 ```
 
 **Solution:**
-- **For Gemini API**: Get additional API keys and rotate them
-- **For Vertex AI**: Request quota increase in GCP Console
+- **Claude Code**: Rate limits are per-session; wait a moment or use `--provider claude` with an API key for higher throughput.
+- **Claude API**: Check usage limits at [console.anthropic.com](https://console.anthropic.com/).
+- **Gemini API**: Get additional API keys or request quota increase.
+- **Vertex AI**: Request quota increase in GCP Console.
 
 ---
 
@@ -58,7 +115,7 @@ gcloud auth application-default login
 ❌ Error: Failed to fetch URL: Connection timeout
 ```
 
-**Solution:** 
+**Solution:**
 - Check your internet connection
 - Verify the URL is accessible
 - Try a different network if behind a firewall
@@ -72,7 +129,7 @@ gcloud auth application-default login
 ⚠️ The provided URL is not a blog post or vulnerability write-up
 ```
 
-**Solution:** 
+**Solution:**
 - Ensure the URL points to a security blog or advisory
 - The content should describe a vulnerability, not a general article
 - Try a different URL that clearly describes a security vulnerability
@@ -83,15 +140,12 @@ gcloud auth application-default login
 
 **Error:**
 ```
-ModuleNotFoundError: No module named 'google.generativeai'
+ModuleNotFoundError: No module named 'anthropic'
 ```
 
-**Solution:** Install dependencies
+**Solution:**
 ```bash
-# Activate virtual environment if using one
 source venv/bin/activate
-
-# Install all dependencies
 pip install -r requirements.txt
 ```
 
@@ -104,7 +158,7 @@ pip install -r requirements.txt
 PermissionError: [Errno 13] Permission denied: 'output/...'
 ```
 
-**Solution:** 
+**Solution:**
 - Ensure you have write permissions in the current directory
 - Run with appropriate permissions or change to a writable directory
 
@@ -117,16 +171,14 @@ PermissionError: [Errno 13] Permission denied: 'output/...'
 ❌ Error: Python 3.10+ required, found 3.8
 ```
 
-**Solution:** Upgrade Python
+**Solution:**
 ```bash
 # Ubuntu/Debian
-sudo apt update
-sudo apt install python3.10
+sudo apt update && sudo apt install python3.10
 
-# macOS (with Homebrew)
+# macOS (Homebrew)
 brew install python@3.10
 
-# Verify version
 python3 --version
 ```
 
@@ -134,30 +186,20 @@ python3 --version
 
 ## Debug Mode
 
-If you encounter issues, enable debug mode for detailed logging:
+Enable debug mode for detailed logging:
 
 ```bash
 python labgenie.py --debug
 ```
 
-This will show:
-- Real-time action tracking
-- Agent response details
-- Timing information
-- Error stack traces
-
-Debug logs are also saved to `logs/{run_id}/` for later analysis.
+This shows real-time action tracking, agent response details, timing information, and error stack traces. Debug logs are also saved to `logs/{run_id}/`.
 
 ---
 
 ## Getting Help
 
-If you encounter an issue not listed here:
-
-1. **Check the logs**: Look in `logs/` and `logs/agent_errors/` for detailed error messages
-2. **Review the documentation**: See `docs/Architecture.md` for system details
+1. **Check the logs**: `logs/` and `logs/agent_errors/` for detailed error messages
+2. **Review the docs**: See `docs/Architecture.md` for system details
 3. **Check your configuration**: Verify API keys and environment variables
 
-**OR**
-
-Raise an issue here in this repo, Every problem have a fix!
+**Or** raise an issue in this repo — every problem has a fix!

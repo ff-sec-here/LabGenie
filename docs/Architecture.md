@@ -1,6 +1,22 @@
 # LabGenie Architecture
 
 ![alt text](images/flowchart.png)
+
+## Supported Providers
+
+LabGenie supports four AI backends, auto-detected in priority order:
+
+| Provider | How it works | Key |
+|---|---|---|
+| `claude-code` | Shells out to the `claude` CLI — uses your **Claude Code subscription** | None (login via `claude login`) |
+| `claude` | Anthropic Python SDK (`anthropic` package) | `ANTHROPIC_API_KEY` |
+| `gemini` | Google Generative AI SDK | `GOOGLE_API_KEY` |
+| `vertex` | Vertex AI SDK via `google-cloud-aiplatform` | `GOOGLE_CLOUD_PROJECT` + ADC |
+
+Set `LABGENIE_PROVIDER` or pass `--provider` to override auto-detection.
+
+---
+
 ## Agent Details
 
 ### 1. WriteUpToMarkdown Agent
@@ -9,22 +25,21 @@
 
 **Location**: `agents/WriteUpToMarkdown/agent.py`
 
-**Model**: `gemini-2.5-flash` (lightweight, fast for content validation)
+**Models by provider**:
+- `claude-code` / `claude`: `claude-haiku-4-5` (fast, lightweight)
+- `gemini` / `vertex`: `gemini-2.5-flash`
 
 **Configuration**:
 - Temperature: 0.4 (consistent validation decisions)
-- Top P: 0.9
-- Top K: 40
+- Max tokens: 15 000
 
 **Process**:
 1. Receives a URL as input
 2. Fetches content via Jina.ai (`https://r.jina.ai/{url}`)
 3. Validates if content is a vulnerability write-up
-4. Returns structured JSON with:
-   - `status`: "ok" or "error"
-   - `markdown`: Full markdown content
-   - `input`: URL and fetch metadata
-   - `error`: Error details if applicable
+4. Returns structured JSON with `status`, `markdown`, `input`, and optional `error`
+
+---
 
 ### 2. WriteupParser Agent
 
@@ -32,19 +47,17 @@
 
 **Location**: `agents/WriteupParser/agent.py`
 
-**Model**: `gemini-2.5-pro` (precise information extraction)
+**Models by provider**:
+- `claude-code`: `claude-sonnet-4-6`
+- `claude`: `claude-opus-4-8`
+- `gemini` / `vertex`: `gemini-2.5-pro`
 
 **Process**:
 1. Receives markdown content
-2. Extracts vulnerability details:
-   - Title and description
-   - CVE identifiers
-   - Affected software/versions
-   - Vulnerability type
-   - Attack vectors
-   - Severity
-   - References
-3. Returns structured vulnerability data
+2. Extracts: title, description, CVE IDs, affected software, vulnerability type, attack vectors, severity, references
+3. Returns structured vulnerability data JSON
+
+---
 
 ### 3. LabCorePlanner Agent
 
@@ -52,19 +65,17 @@
 
 **Location**: `agents/LabCorePlanner/agent.py`
 
-**Model**: `gemini-2.5-pro` (complex planning and architecture)
+**Models by provider**:
+- `claude-code`: `claude-sonnet-4-6`
+- `claude`: `claude-opus-4-8`
+- `gemini` / `vertex`: `gemini-2.5-pro`
 
 **Process**:
 1. Receives structured vulnerability data
-2. Designs lab components:
-   - Application architecture
-   - Database schema
-   - Docker configuration
-   - Network topology
-3. Returns comprehensive lab plan with:
-   - File structure
-   - Technology stack
-   - Setup instructions
+2. Designs: application architecture, database schema, Docker configuration, network topology
+3. Returns comprehensive lab plan with file structure, technology stack, and setup instructions
+
+---
 
 ### 4. LabBuilder Agent
 
@@ -72,93 +83,90 @@
 
 **Location**: `agents/LabBuilder/agent.py`
 
-**Model**: `gemini-2.5-pro` (code generation)
+**Models by provider**:
+- `claude-code`: `claude-sonnet-4-6`
+- `claude`: `claude-opus-4-8`
+- `gemini` / `vertex`: `gemini-2.5-pro`
 
 **Process**:
 1. Receives lab plan
-2. Generates all required files:
-   - Application source code
-   - Docker configurations
-   - Database schemas
-   - Documentation
-3. Returns structured file list with:
-   - `path`: File path
-   - `content`: Full file content
-   - `type`: File type
-   - `description`: File purpose
+2. Generates all required files: source code, Docker configs, schemas, docs
+3. Returns structured file list with `path`, `content`, `type`, `description`
 
 **Docker Strategy**:
-- **Multiple containers**: Generates `docker-compose.yml` for orchestrating multiple services (e.g., app + database + cache)
-- **Single container**: Generates a single `Dockerfile` for standalone applications
+- Multiple containers → `docker-compose.yml`
+- Single container → `Dockerfile`
+
+---
 
 ## Base Agent Class
 
 **Location**: `agents/base_agent.py`
 
-**Purpose**: Provides common functionality for all agents.
-
 **Key Features**:
 
-1. **Multi-Provider Support**:
-   - Gemini API (via `google-generativeai`)
-   - Vertex AI (via `google-cloud-aiplatform`)
-   - Auto-detection based on environment variables
+1. **Multi-Provider Support** — four backends with auto-detection
+2. **Prompt Management** — loads system instructions from per-agent `prompt.md` files
+3. **JSON Generation** — `generate_json()` with retry logic, automatic cleaning, and repair
+4. **Error Handling** — detailed logging to `logs/agent_errors/`, up to 3 retries
+5. **Response Parsing** — cleans markdown fences, repairs malformed JSON, extracts from mixed content
 
-2. **Prompt Management**:
-   - Loads system instructions from markdown files
-   - Each agent has its own prompt template
-   - Supports dynamic prompt composition
+### Provider dispatch in `generate()`
 
-3. **JSON Generation**:
-   - `generate_json()` method with retry logic
-   - Automatic JSON cleaning and repair
-   - Handles markdown code fences
-   - Repairs common JSON errors (trailing commas, unquoted keys)
+```
+provider == "vertex"      → vertexai.GenerativeModel.generate_content()
+provider == "claude-code" → subprocess: claude -p <prompt> --output-format json
+provider == "claude"      → anthropic.Anthropic().messages.create()
+provider == "gemini"      → genai.GenerativeModel.generate_content()
+```
 
-4. **Error Handling**:
-   - Detailed error logging to `logs/agent_errors/`
-   - Retry mechanism (up to 3 attempts)
-   - Descriptive error messages
-
-5. **Response Parsing**:
-   - Cleans markdown code blocks
-   - Repairs malformed JSON
-   - Extracts JSON from mixed content
-   - Detailed error reporting with full payloads
+---
 
 ## Configuration System
 
 **Location**: `config.json`
 
-**Structure**:
+Provider-scoped model configuration:
+
 ```json
 {
+  "provider": "claude-code",
   "models": {
-    "WriteUpToMarkdown": "gemini-2.5-flash",
-    "WriteupParser": "models/gemini-2.5-pro",
-    "LabCorePlanner": "models/gemini-2.5-pro",
-    "LabBuilder": "models/gemini-2.5-pro"
+    "claude-code": {
+      "WriteUpToMarkdown": "claude-haiku-4-5",
+      "WriteupParser": "claude-sonnet-4-6",
+      "LabCorePlanner": "claude-sonnet-4-6",
+      "LabBuilder": "claude-sonnet-4-6"
+    },
+    "claude": {
+      "WriteUpToMarkdown": "claude-haiku-4-5",
+      "WriteupParser": "claude-opus-4-8",
+      "LabCorePlanner": "claude-opus-4-8",
+      "LabBuilder": "claude-opus-4-8"
+    },
+    "gemini": { ... },
+    "vertex": { ... }
   }
 }
 ```
 
+---
 
 ## Logging System
 
-### File Logger
-
 **Location**: `logs/{run_id}/`
 
-**Files**:
-- `step_1_markdown_conversion.json`
-- `step_2_vulnerability_parsing.json`
-- `step_3_lab_planning.json`
-- `step_4_lab_building.json`
+- `run_info.json` — run metadata and status
+- `{AgentName}.log` — per-agent input/output audit trail
+- `logs/agent_errors/` — detailed error payloads for debugging
 
-**Purpose**: Debug and audit trail for each run.
+---
 
+## Model Selection Strategy
 
-### Model Selection Strategy
+| Task | claude-code | claude | gemini/vertex |
+|---|---|---|---|
+| URL validation (fast) | `claude-haiku-4-5` | `claude-haiku-4-5` | `gemini-2.5-flash` |
+| Parsing / Planning / Building | `claude-sonnet-4-6` | `claude-opus-4-8` | `gemini-2.5-pro` |
 
-- **gemini-2.5-flash**: Fast, lightweight tasks (URL validation)
-- **gemini-2.5-pro**: Complex tasks (parsing, planning, building)
+`claude-code` uses Sonnet (not Opus) because it runs through the subscription CLI which has session-level rate limits — Sonnet gives a better speed/quality balance there.
