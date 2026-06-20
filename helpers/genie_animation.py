@@ -309,7 +309,14 @@ def display_workflow_banner(
     console.print(create_epic_startup_banner())
 
     if verbose:
-        provider_name = "Vertex AI" if provider == "vertex" else "Gemini API"
+        provider_labels = {
+            "claude-code": "Claude Code (subscription)",
+            "claude":      "Claude API",
+            "gemini":      "Gemini API",
+            "vertex":      "Vertex AI",
+        }
+        provider_name = provider_labels.get(
+            (provider or "").lower(), (provider or "Unknown").title())
         info_text = (
             f"[dim]Provider: {provider_name} | "
             f"Run: {run_id} | "

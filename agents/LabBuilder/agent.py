@@ -32,7 +32,7 @@ class LabBuilderAgent(BaseAgent):
 
         # Override generation config for LabBuilder - needs higher token limit
         # for complete labs
-        if self.provider == "claude":
+        if self.provider in ("claude", "claude-code"):
             self.generation_config = {
                 "temperature": 0.3,
                 "max_tokens": 16000,

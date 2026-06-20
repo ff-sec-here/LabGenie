@@ -13,9 +13,11 @@ LabGenie is a terminal-first, interactive CLI tool that takes a vulnerability wr
 ### Prerequisites
 
 - Python 3.10 or higher
-- **Option A**: Anthropic API key — **Default & Recommended**
-- **Option B**: Google Gemini API key
-- **Option C**: Google Cloud Project with Vertex AI enabled
+- One of the following AI providers (in recommended order):
+  - **Option A**: Claude Code subscription — `claude login` *(no API costs)*
+  - **Option B**: Anthropic API key from [console.anthropic.com](https://console.anthropic.com/)
+  - **Option C**: Google Gemini API key
+  - **Option D**: Google Cloud Project with Vertex AI enabled
 
 ### Installation
 
@@ -34,23 +36,30 @@ bash setup.sh
 This will:
 - Create a Python virtual environment
 - Install all dependencies
-- Check for required API keys
+- Detect your configured AI provider automatically
 - Make the CLI executable
 
 3. **Configure your AI provider**
 
-**Option A: Claude / Anthropic (Default)**
+**Option A: Claude Code subscription (Recommended — no API costs)**
+```bash
+# Install Claude Code from https://claude.ai/download, then:
+claude login
+```
+LabGenie detects the `claude` CLI automatically — no environment variables needed.
+
+**Option B: Claude API**
 ```bash
 export ANTHROPIC_API_KEY='your-anthropic-api-key'
 ```
-Get a key at [console.anthropic.com](https://console.anthropic.com/).
+> **Note:** This is a separate pay-per-use key from [console.anthropic.com](https://console.anthropic.com/), not your Claude.ai subscription.
 
-**Option B: Gemini API**
+**Option C: Gemini API**
 ```bash
 export GOOGLE_API_KEY='your-gemini-api-key'
 ```
 
-**Option C: Vertex AI (Enterprise)**
+**Option D: Vertex AI (Enterprise)**
 ```bash
 export GOOGLE_CLOUD_PROJECT='your-gcp-project-id'
 gcloud auth application-default login
@@ -59,7 +68,7 @@ gcloud auth application-default login
 Or create a `.env` file:
 ```bash
 cp .env.example .env
-# Edit .env and add your API key
+# Edit .env and add your credentials
 ```
 
 ### Run LabGenie
@@ -68,13 +77,14 @@ cp .env.example .env
 # Activate virtual environment (if not already active)
 source venv/bin/activate
 
-# Interactive mode (default — uses Claude if ANTHROPIC_API_KEY is set)
+# Interactive mode — auto-detects your provider
 python labgenie.py
 
 # Direct URL mode
 python labgenie.py --url https://example.com/vuln-writeup
 
 # Explicitly choose a provider
+python labgenie.py --url https://example.com/vuln --provider claude-code
 python labgenie.py --url https://example.com/vuln --provider claude
 python labgenie.py --url https://example.com/vuln --provider gemini
 python labgenie.py --url https://example.com/vuln --provider vertex
@@ -82,6 +92,19 @@ python labgenie.py --url https://example.com/vuln --provider vertex
 # Debug mode for detailed output
 python labgenie.py --debug
 ```
+
+---
+
+## Provider Comparison
+
+| Provider | Cost | Setup | Best For |
+|---|---|---|---|
+| `claude-code` | Covered by Claude Max subscription | `claude login` | Most users — zero API costs |
+| `claude` | Pay-per-token (Anthropic API) | `ANTHROPIC_API_KEY` | CI/CD, scripted runs |
+| `gemini` | Pay-per-token (Google API) | `GOOGLE_API_KEY` | Google ecosystem users |
+| `vertex` | Pay-per-token (GCP) | GCP project + ADC | Enterprise / GCP users |
+
+**Auto-detection priority:** `claude-code` → `claude` → `vertex` → `gemini`
 
 ---
 
@@ -115,7 +138,8 @@ output/
     └── src/                      # Application source code
 ```
 
-The lab output dir name can be passed via --output-dir flag.
+The lab output dir name can be passed via `--output` flag.
+
 ---
 
 ## Architecture

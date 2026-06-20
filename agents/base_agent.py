@@ -3,14 +3,18 @@ Base Agent class for all LabGenie agents
 Provides common AI backend setup and utilities.
 
 Backends supported:
-- vertex: Google Cloud Vertex AI (Gemini via google-cloud-aiplatform)
-- gemini: Google Gemini API (via google-generativeai)
+- claude-code: Claude Code CLI subscription (no API key needed)
+- claude:      Anthropic API (ANTHROPIC_API_KEY)
+- gemini:      Google Gemini API (GOOGLE_API_KEY)
+- vertex:      Google Cloud Vertex AI (GOOGLE_CLOUD_PROJECT)
 """
 
 import asyncio
 import json
 import re
 import os
+import shutil
+import subprocess
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -64,8 +68,8 @@ class BaseAgent:
             provider or os.getenv(
                 "LABGENIE_PROVIDER",
                 "claude")).lower()
-        if self.provider not in ("vertex", "gemini", "claude"):
-            self.provider = "gemini"
+        if self.provider not in ("vertex", "gemini", "claude", "claude-code"):
+            self.provider = "claude"
 
         self.model_name = model
         self.prompt_file_path = prompt_file_path
@@ -98,6 +102,17 @@ class BaseAgent:
                 max_output_tokens=8192,
                 candidate_count=1,
             )
+
+        elif self.provider == "claude-code":
+            if shutil.which("claude") is None:
+                raise RuntimeError(
+                    "Claude Code CLI not found. Install it from "
+                    "https://claude.ai/download and log in with: claude login")
+
+            self.generation_config = {
+                "temperature": 0.4,
+                "max_tokens": 8192,
+            }
 
         elif self.provider == "claude":
             if anthropic_sdk is None:
@@ -178,6 +193,36 @@ class BaseAgent:
                             len(prompt)} chars")
 
             return await asyncio.to_thread(_generate_sync_vertex)
+
+        # Claude Code CLI path (uses Claude Code subscription, no API key)
+        if self.provider == "claude-code":
+            def _generate_sync_claude_code():
+                full_prompt = (
+                    f"{self.system_instruction}\n\n{prompt}"
+                    if self.system_instruction else prompt
+                )
+                try:
+                    result = subprocess.run(
+                        ["claude", "-p", full_prompt, "--output-format", "json"],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+                    if result.returncode != 0:
+                        raise ValueError(
+                            f"Claude Code CLI error: {result.stderr.strip()}")
+                    data = json.loads(result.stdout)
+                    return data.get("result", data.get("content", result.stdout))
+                except subprocess.TimeoutExpired:
+                    raise ValueError("Claude Code CLI timed out after 300s")
+                except json.JSONDecodeError:
+                    # CLI returned plain text instead of JSON
+                    return result.stdout.strip()
+                except Exception as e:
+                    raise ValueError(
+                        f"Claude Code CLI generation failed: {str(e)}\nPrompt length: {len(full_prompt)} chars")
+
+            return await asyncio.to_thread(_generate_sync_claude_code)
 
         # Claude (Anthropic) API path
         if self.provider == "claude":

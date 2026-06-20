@@ -31,7 +31,7 @@ class LabCorePlannerAgent(BaseAgent):
             provider=provider)
 
         # Optimized config for structured lab planning
-        if self.provider == "claude":
+        if self.provider in ("claude", "claude-code"):
             self.generation_config = {
                 "temperature": 0.5,
                 "max_tokens": 16384,

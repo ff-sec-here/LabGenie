@@ -1,9 +1,29 @@
 {
+  "provider": "claude-code",
   "models": {
-    "WriteUpToMarkdown": "claude-haiku-4-5",
-    "WriteupParser": "claude-opus-4-8",
-    "LabCorePlanner": "claude-opus-4-8",
-    "LabBuilder": "claude-opus-4-8"
-  },
-  "provider": "claude"
+    "claude-code": {
+      "WriteUpToMarkdown": "claude-haiku-4-5",
+      "WriteupParser": "claude-sonnet-4-6",
+      "LabCorePlanner": "claude-sonnet-4-6",
+      "LabBuilder": "claude-sonnet-4-6"
+    },
+    "claude": {
+      "WriteUpToMarkdown": "claude-haiku-4-5",
+      "WriteupParser": "claude-opus-4-8",
+      "LabCorePlanner": "claude-opus-4-8",
+      "LabBuilder": "claude-opus-4-8"
+    },
+    "gemini": {
+      "WriteUpToMarkdown": "gemini-2.5-flash",
+      "WriteupParser": "models/gemini-2.5-pro",
+      "LabCorePlanner": "models/gemini-2.5-pro",
+      "LabBuilder": "models/gemini-2.5-pro"
+    },
+    "vertex": {
+      "WriteUpToMarkdown": "gemini-2.5-flash",
+      "WriteupParser": "gemini-2.5-pro",
+      "LabCorePlanner": "gemini-2.5-pro",
+      "LabBuilder": "gemini-2.5-pro"
+    }
+  }
 }

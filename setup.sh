@@ -14,7 +14,7 @@ echo "Checking Python version..."
 python_version=$(python3 --version 2>&1 | awk '{print $2}')
 required_version="3.10"
 
-if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then 
+if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
     echo "❌ Error: Python 3.10+ required, found $python_version"
     exit 1
 fi
@@ -36,46 +36,86 @@ echo ""
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-
 # Install dependencies
 echo "Installing dependencies..."
-pip install -r requirements.txt 
-
+pip install -r requirements.txt
 echo "✅ Dependencies installed"
 echo ""
 
-# Check for API key
-if [ -z "$GOOGLE_API_KEY" ]; then
-    echo "⚠️  GOOGLE_API_KEY not set"
-    echo ""
-    echo "To set your API key:"
-    echo "  1. Get an API key from: https://makersuite.google.com/app/apikey"
-    echo "  2. Run: export GOOGLE_API_KEY='your-api-key'"
-    echo "  3. Or create a .env file with: GOOGLE_API_KEY=your-api-key"
-    echo ""
+# ─── Provider detection ──────────────────────────────────────────────────────
+
+PROVIDER_FOUND=""
+
+# Option 1: Claude Code CLI (subscription — no API key needed)
+if command -v claude &> /dev/null; then
+    echo "✅ Claude Code CLI detected — using subscription (no API key needed)"
+    PROVIDER_FOUND="claude-code"
+
+# Option 2: Claude API key
+elif [ -n "$ANTHROPIC_API_KEY" ]; then
+    echo "✅ ANTHROPIC_API_KEY detected — using Claude API"
+    PROVIDER_FOUND="claude"
+
+# Option 3: Gemini API key
+elif [ -n "$GOOGLE_API_KEY" ]; then
+    echo "✅ GOOGLE_API_KEY detected — using Gemini API"
+    PROVIDER_FOUND="gemini"
+
+# Option 4: Vertex AI
+elif [ -n "$GOOGLE_CLOUD_PROJECT" ] || [ -n "$GCP_PROJECT" ]; then
+    echo "✅ GCP project detected — using Vertex AI"
+    PROVIDER_FOUND="vertex"
+
 else
-    echo "✅ GOOGLE_API_KEY detected"
+    echo "⚠️  No AI provider configured"
+    echo ""
+    echo "Please set up one of the following:"
+    echo ""
+    echo "  Option 1 — Claude Code subscription (Recommended, no API costs):"
+    echo "    Install: https://claude.ai/download"
+    echo "    Login:   claude login"
+    echo ""
+    echo "  Option 2 — Claude API:"
+    echo "    export ANTHROPIC_API_KEY='your-key'"
+    echo "    Get key: https://console.anthropic.com/"
+    echo ""
+    echo "  Option 3 — Gemini API:"
+    echo "    export GOOGLE_API_KEY='your-key'"
+    echo "    Get key: https://makersuite.google.com/app/apikey"
+    echo ""
+    echo "  Option 4 — Vertex AI (Enterprise):"
+    echo "    export GOOGLE_CLOUD_PROJECT='your-project-id'"
+    echo "    gcloud auth application-default login"
     echo ""
 fi
 
 # Make CLI executable
 chmod +x labgenie.py
 
+echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "🚀 Quick Start:"
 echo "  # Activate virtual environment (if not already active)"
 echo "  source venv/bin/activate"
 echo ""
-echo "  # Run LabGenie"
+echo "  # Run LabGenie (auto-detects provider)"
 echo "  python labgenie.py"
 echo ""
-echo "  # Or use direct URL mode"
+echo "  # Or direct URL mode"
 echo "  python labgenie.py --url https://example.com/vuln-writeup"
 echo ""
+
+if [ "$PROVIDER_FOUND" = "claude-code" ]; then
+    echo "  # Using Claude Code subscription (--provider claude-code)"
+    echo "  python labgenie.py --url https://example.com/vuln --provider claude-code"
+    echo ""
+fi
+
 echo "📚 Documentation:"
-echo "  README.md - Usage instructions"
-echo "  docs/Architecture.md - System architecture"
+echo "  README.md          — Usage instructions"
+echo "  docs/Architecture.md — System architecture"
+echo "  docs/Troubleshooting.md — Common issues"
 echo ""
 echo "💡 Tip: The virtual environment must be activated before running LabGenie"
 echo ""
