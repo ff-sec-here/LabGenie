@@ -35,6 +35,7 @@ class LabCorePlannerAgent(BaseAgent):
             self.generation_config = {
                 "temperature": 0.5,
                 "max_tokens": 16384,
+                "cli_timeout": 600,
             }
         elif self.provider == "vertex" and GenerationConfig is not None:
             self.generation_config = GenerationConfig(

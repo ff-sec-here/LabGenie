@@ -36,6 +36,7 @@ class LabBuilderAgent(BaseAgent):
             self.generation_config = {
                 "temperature": 0.3,
                 "max_tokens": 16000,
+                "cli_timeout": 900,  # LabBuilder generates full codebases — needs more time
             }
         elif self.provider == "vertex" and GenerationConfig is not None:
             self.generation_config = GenerationConfig(

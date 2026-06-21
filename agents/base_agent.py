@@ -201,12 +201,13 @@ class BaseAgent:
                     f"{self.system_instruction}\n\n{prompt}"
                     if self.system_instruction else prompt
                 )
+                timeout = self.generation_config.get("cli_timeout", 600)
                 try:
                     result = subprocess.run(
                         ["claude", "-p", full_prompt, "--output-format", "json"],
                         capture_output=True,
                         text=True,
-                        timeout=300,
+                        timeout=timeout,
                     )
                     if result.returncode != 0:
                         raise ValueError(
@@ -214,7 +215,9 @@ class BaseAgent:
                     data = json.loads(result.stdout)
                     return data.get("result", data.get("content", result.stdout))
                 except subprocess.TimeoutExpired:
-                    raise ValueError("Claude Code CLI timed out after 300s")
+                    raise ValueError(
+                        f"Claude Code CLI timed out after {timeout}s. "
+                        "Try --provider claude with an API key for long-running tasks.")
                 except json.JSONDecodeError:
                     # CLI returned plain text instead of JSON
                     return result.stdout.strip()
