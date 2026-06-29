@@ -559,6 +559,35 @@ class LabGenieWorkflow:
             agent_input=url
         )
 
+    def step_1_from_files(self, file_paths: List[Path]) -> Dict[str, Any]:
+        """Step 1 substitute: load local markdown files instead of fetching URL"""
+        combined = []
+        for fp in file_paths:
+            content = fp.read_text(encoding="utf-8")
+            combined.append(f"<!-- Source: {fp.name} -->\n{content}")
+
+        markdown_text = "\n\n---\n\n".join(combined)
+
+        console.print(Panel(
+            f"[bold green]📄 Loaded {len(file_paths)} local file(s)[/bold green]\n"
+            + "\n".join(f"[dim]  • {fp}[/dim]" for fp in file_paths),
+            border_style="green",
+            box=box.ROUNDED,
+            padding=(0, 1),
+            width=60
+        ))
+
+        return {
+            "status": "ok",
+            "input": {"files": [str(fp) for fp in file_paths]},
+            "markdown": markdown_text,
+            "resources": [],
+            "tags": [],
+            "extraction_notes": "Loaded from local file(s); URL fetch skipped.",
+            "safety_flag": True,
+            "error": None
+        }
+
     async def step_2_vulnerability_parsing(
             self, markdown_data: Dict[str, Any]) -> Dict[str, Any]:
         """Step 2: Parse vulnerability information"""
@@ -792,6 +821,124 @@ class LabGenieWorkflow:
         )
         console.print(next_steps)
 
+    # -----------------------------------------------------------------
+    # Resume helpers
+    # -----------------------------------------------------------------
+
+    _STEP_LOG_NAMES = {
+        "markdown":  "WriteUp_to_Markdown_Conversion",
+        "parser":    "Vulnerability_Information_Parsing",
+        "planner":   "Lab_Core_Planning",
+        "builder":   "Lab_Building",
+    }
+    _STEP_ORDER = ["markdown", "parser", "planner", "builder"]
+
+    def _resolve_log_dir(self, resume_arg: str) -> Optional[Path]:
+        """Resolve --resume value to a log directory Path."""
+        # Direct path
+        p = Path(resume_arg)
+        if p.exists() and p.is_dir():
+            return p
+        # Treat as run_id under the default logs/ dir
+        candidate = Path("logs") / resume_arg
+        if candidate.exists():
+            return candidate
+        return None
+
+    def _load_step_output(self, log_dir: Path, step_key: str) -> Optional[Dict[str, Any]]:
+        """Read the agent response from a step log file."""
+        log_name = self._STEP_LOG_NAMES[step_key]
+        log_file = log_dir / f"{log_name}.log"
+        if not log_file.exists():
+            return None
+        try:
+            content = log_file.read_text(encoding="utf-8")
+            # Each log entry is separated by ===... lines; take the last one
+            entries = [b.strip() for b in content.split("=" * 80) if b.strip()]
+            if not entries:
+                return None
+            last = json.loads(entries[-1])
+            resp = last.get("response")
+            if isinstance(resp, dict) and not resp.get("error"):
+                return resp
+            return None
+        except Exception:
+            return None
+
+    def detect_resume_point(self, log_dir: Path):
+        """Return (resume_from_step_key, outputs_so_far) for the first failed/missing step."""
+        outputs: Dict[str, Any] = {}
+        for step in self._STEP_ORDER:
+            result = self._load_step_output(log_dir, step)
+            if result is None:
+                return step, outputs
+            outputs[step] = result
+        # All steps completed — nothing to resume
+        return None, outputs
+
+    async def run_resume(self, log_dir: Path, files: Optional[List[Path]] = None):
+        """Resume a previous run from the first failed/missing step."""
+        resume_from, cached = self.detect_resume_point(log_dir)
+
+        if resume_from is None:
+            console.print(Panel(
+                "[bold green]✅ All steps already completed in that run![/bold green]\n"
+                "[dim]Nothing to resume — use --file or --url for a fresh run.[/dim]",
+                border_style="green", box=box.ROUNDED, padding=(0, 1), width=60
+            ))
+            return
+
+        console.print(Panel(
+            f"[bold cyan]⏩ Resuming from step: [white]{resume_from}[/white][/bold cyan]\n"
+            f"[dim]Log dir: {log_dir}[/dim]",
+            border_style="cyan", box=box.ROUNDED, padding=(0, 1), width=60
+        ))
+
+        if self.logger:
+            self.logger.start_workflow()
+
+        try:
+            # Determine starting data for each step based on what's cached
+            if resume_from == "markdown":
+                if files:
+                    markdown_data = self.step_1_from_files(files)
+                else:
+                    console.print("[red]❌ No cached markdown and no --file provided; cannot resume from step 1.[/red]")
+                    return
+            else:
+                markdown_data = cached["markdown"]
+
+            if resume_from in ("markdown", "parser"):
+                vulnerability_data = await self.step_2_vulnerability_parsing(markdown_data)
+            else:
+                vulnerability_data = cached["parser"]
+
+            if resume_from in ("markdown", "parser", "planner"):
+                plan_data = await self.step_3_lab_planning(vulnerability_data)
+            else:
+                plan_data = cached["planner"]
+
+            lab_data = await self.step_4_lab_building(plan_data)
+
+            output_path = self.save_artifacts(lab_data, plan_data)
+            self.file_logger.finalize("success")
+
+            if self.debug_mode and self.logger:
+                self._display_debug_summary()
+
+            self.display_summary(lab_data, output_path)
+
+        except KeyboardInterrupt:
+            self.file_logger.finalize("interrupted")
+            console.print("\n[yellow]⚠️  Workflow interrupted by user[/yellow]")
+            sys.exit(0)
+        except Exception as e:
+            self.file_logger.finalize("failed")
+            console.print(f"\n[bold red]❌ Resume failed: {e}[/bold red]")
+            if self.debug_mode:
+                console.print(traceback.format_exc())
+            sys.exit(1)
+
     async def run_interactive(self):
         """Run the interactive CLI workflow"""
         self.display_banner()
@@ -805,46 +952,48 @@ class LabGenieWorkflow:
                 width=60
             ))
 
-        # Input prompt panel
+        # Input prompt panel — ask for URL or local files
         console.print(
             Panel(
-                "[bold white]Vulnerability Write-up URL[/bold white]\n"
-                "[dim](Provide a URL to a blog post or security advisory)[/dim]",
+                "[bold white]Vulnerability Write-up Source[/bold white]\n"
+                "[dim]Enter a URL  [bold]or[/bold]  one/more local markdown file paths (space-separated)[/dim]",
                 border_style="cyan",
                 box=box.ROUNDED,
                 padding=(0, 1),
                 width=60
             ))
 
-        url = Prompt.ask("🔗 [cyan]URL[/cyan]")
+        raw_input = Prompt.ask("🔗 [cyan]URL or file path(s)[/cyan]")
 
-        if not url:
-            error_panel = Panel(
-                "[red]❌ URL is required[/red]",
-                border_style="red",
-                box=box.ROUNDED,
-                padding=(0, 1),
-                width=60
-            )
-            console.print(error_panel)
+        if not raw_input:
+            console.print(Panel(
+                "[red]❌ Input is required[/red]",
+                border_style="red", box=box.ROUNDED, padding=(0, 1), width=60
+            ))
             return
 
-        if self.verbose:
-            info_panel = Panel(
-                f"[dim]Processing: {url}[/dim]",
-                border_style="blue",
-                box=box.ROUNDED,
-                padding=(0, 1),
-                width=60
-            )
-            console.print(info_panel)
+        # Detect local files vs URL
+        tokens = raw_input.split()
+        local_files = [Path(t) for t in tokens if Path(t).exists() and Path(t).suffix in (".md", ".markdown", ".txt")]
+        use_files = len(local_files) > 0
+
+        if not use_files:
+            url = raw_input.strip()
+            if self.verbose:
+                console.print(Panel(
+                    f"[dim]Processing: {url}[/dim]",
+                    border_style="blue", box=box.ROUNDED, padding=(0, 1), width=60
+                ))
 
         # Always start workflow timer (needed for duration tracking)
         if self.logger:
             self.logger.start_workflow()
 
         try:
-            markdown_data = await self.step_1_markdown_conversion(url)
+            if use_files:
+                markdown_data = self.step_1_from_files(local_files)
+            else:
+                markdown_data = await self.step_1_markdown_conversion(url)
 
             if markdown_data.get("error"):
                 console.print(
@@ -1041,6 +1190,17 @@ Examples:
   # Generate lab from URL with default settings
   labgenie --url https://example.com/vuln-writeup
 
+  # Generate lab from local markdown file(s) — skips URL fetch step
+  labgenie --file writeup.md
+  labgenie --file part1.md part2.md
+
+  # Resume a failed run (auto-detects last successful step)
+  labgenie --resume 20260620_224245_d7d94b89
+  labgenie --resume ./logs/20260620_224245_d7d94b89
+
+  # Resume with local files (if markdown step also failed)
+  labgenie --resume 20260620_224245_d7d94b89 --file writeup.md
+
   # Custom output and logs directories
   labgenie --url https://example.com/vuln --output ./my-labs --logs ./my-logs
 
@@ -1058,6 +1218,21 @@ For more information, visit: https://github.com/yourusername/LabGenie
         '--url', '-u',
         type=str,
         help='Vulnerability write-up URL to process'
+    )
+
+    parser.add_argument(
+        '--file', '-f',
+        type=str,
+        nargs='+',
+        metavar='FILE',
+        help='One or more local markdown files to use as input (skips URL fetch step)'
+    )
+
+    parser.add_argument(
+        '--resume', '-r',
+        type=str,
+        metavar='RUN_ID_OR_PATH',
+        help='Resume a previous run from the first failed step (provide run_id or path to log dir)'
     )
 
     parser.add_argument(
@@ -1169,43 +1344,106 @@ For more information, visit: https://github.com/yourusername/LabGenie
 
         return
 
-    # CLI mode with arguments
-    if args.url:
-        output_dir = Path(args.output) if args.output else None
-        log_dir = Path(args.logs) if args.logs else None
-        verbose = not args.quiet
+    # Build shared workflow kwargs
+    output_dir = Path(args.output) if args.output else None
+    log_dir = Path(args.logs) if args.logs else None
+    verbose = not args.quiet
+
+    # --resume mode
+    if args.resume:
+        workflow = LabGenieWorkflow(
+            output_dir=output_dir,
+            log_dir=log_dir,
+            debug_mode=args.debug,
+            verbose=verbose,
+            provider=args.provider,
+            api_key=args.api_key
+        )
+        workflow.display_banner()
+
+        resume_log_dir = workflow._resolve_log_dir(args.resume)
+        if resume_log_dir is None:
+            console.print(f"[red]❌ Could not find log directory for: {args.resume}[/red]")
+            console.print("[dim]Provide a run_id (e.g. 20260620_224245_d7d94b89) or full path.[/dim]")
+            sys.exit(1)
+
+        local_files = [Path(f) for f in args.file] if args.file else None
+        if local_files:
+            missing = [f for f in local_files if not f.exists()]
+            if missing:
+                console.print(f"[red]❌ File(s) not found: {', '.join(str(f) for f in missing)}[/red]")
+                sys.exit(1)
+
+        await workflow.run_resume(resume_log_dir, files=local_files)
+        return
+
+    # --file mode (local markdown files, no URL fetch)
+    if args.file:
+        local_files = [Path(f) for f in args.file]
+        missing = [f for f in local_files if not f.exists()]
+        if missing:
+            console.print(f"[red]❌ File(s) not found: {', '.join(str(f) for f in missing)}[/red]")
+            sys.exit(1)
 
         workflow = LabGenieWorkflow(
             output_dir=output_dir,
             log_dir=log_dir,
             debug_mode=args.debug,
             verbose=verbose,
-            provider=args.provider,  # None = auto-detect
+            provider=args.provider,
+            api_key=args.api_key
+        )
+        workflow.display_banner()
+
+        if workflow.logger:
+            workflow.logger.start_workflow()
+
+        try:
+            markdown_data = workflow.step_1_from_files(local_files)
+            vulnerability_data = await workflow.step_2_vulnerability_parsing(markdown_data)
+            plan_data = await workflow.step_3_lab_planning(vulnerability_data)
+            lab_data = await workflow.step_4_lab_building(plan_data)
+
+            output_path = workflow.save_artifacts(lab_data, plan_data)
+            workflow.file_logger.finalize("success")
+
+            if workflow.debug_mode and workflow.logger:
+                workflow._display_debug_summary()
+
+            workflow.display_summary(lab_data, output_path)
+
+        except Exception as e:
+            workflow.file_logger.finalize("failed")
+            console.print(f"\n[bold red]❌ Workflow failed: {e}[/bold red]")
+            if args.debug:
+                console.print(traceback.format_exc())
+            sys.exit(1)
+
+        return
+
+    # --url mode
+    if args.url:
+        workflow = LabGenieWorkflow(
+            output_dir=output_dir,
+            log_dir=log_dir,
+            debug_mode=args.debug,
+            verbose=verbose,
+            provider=args.provider,
             api_key=args.api_key
         )
         workflow.display_banner()
 
         if workflow.debug_mode:
-            debug_panel = Panel(
+            console.print(Panel(
                 "[bold yellow]🐞 Debug Mode Enabled[/bold yellow]",
-                border_style="yellow",
-                box=box.ROUNDED,
-                padding=(0, 1),
-                width=60
-            )
-            console.print(debug_panel)
+                border_style="yellow", box=box.ROUNDED, padding=(0, 1), width=60
+            ))
 
-        # Processing message
-        processing_panel = Panel(
+        console.print(Panel(
             "[bold cyan]🤖 Processing input...[/bold cyan]",
-            border_style="cyan",
-            box=box.ROUNDED,
-            padding=(0, 1),
-            width=60
-        )
-        console.print(processing_panel)
+            border_style="cyan", box=box.ROUNDED, padding=(0, 1), width=60
+        ))
 
-        # Always start workflow timer
         if workflow.logger:
             workflow.logger.start_workflow()
 
@@ -1214,10 +1452,7 @@ For more information, visit: https://github.com/yourusername/LabGenie
 
             if markdown_data.get("error"):
                 console.print(
-                    f"[bold red]❌ Error: {
-                        markdown_data.get(
-                            'reason',
-                            'Invalid URL')}[/bold red]")
+                    f"[bold red]❌ Error: {markdown_data.get('reason', 'Invalid URL')}[/bold red]")
                 return
 
             vulnerability_data = await workflow.step_2_vulnerability_parsing(markdown_data)
