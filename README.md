@@ -83,6 +83,13 @@ python labgenie.py
 # Direct URL mode
 python labgenie.py --url https://example.com/vuln-writeup
 
+# Build from local markdown file(s) — skips URL fetch
+python labgenie.py --file writeup.md
+python labgenie.py --file part1.md part2.md
+
+# Resume a failed run (auto-detects last successful step)
+python labgenie.py --resume 20260620_224245_d7d94b89
+
 # Explicitly choose a provider
 python labgenie.py --url https://example.com/vuln --provider claude-code
 python labgenie.py --url https://example.com/vuln --provider claude
@@ -110,20 +117,46 @@ python labgenie.py --debug
 
 ## Usage
 
-Simply run the CLI and provide a vulnerability write-up URL:
+### From a URL
 
 ```bash
-$ python labgenie.py
-
-🔗 Write-up URL: https://example.com/blog/sqli-vulnerability
+$ python labgenie.py --url https://example.com/blog/sqli-vulnerability
 ```
 
-The CLI will then:
+### From local markdown files
 
-1. **Convert** the write-up to structured markdown
-2. **Parse** vulnerability information and reproduction steps  
-3. **Plan** the lab architecture and components
-4. **Build** complete, runnable lab artifacts
+Skip the URL fetch step entirely by passing one or more local `.md` files:
+
+```bash
+python labgenie.py --file writeup.md
+python labgenie.py --file part1.md part2.md
+```
+
+In interactive mode, just type a file path instead of a URL at the prompt — LabGenie detects it automatically.
+
+### Resuming a failed run
+
+If a run fails midway (e.g. the builder agent times out), resume it without re-running the successful steps:
+
+```bash
+# Use the run_id printed in the banner, or the full log directory path
+python labgenie.py --resume 20260620_224245_d7d94b89
+python labgenie.py --resume ./logs/20260620_224245_d7d94b89
+
+# If the markdown step also needs re-seeding, combine with --file
+python labgenie.py --resume 20260620_224245_d7d94b89 --file writeup.md
+```
+
+LabGenie reads the log files from the previous run, auto-detects the first step that failed or didn't complete, and re-runs only from that point.
+
+---
+
+The four-stage workflow:
+
+1. **Convert** — fetch and parse the write-up into structured markdown *(skipped with `--file`)*
+2. **Parse** — extract vulnerability details and reproduction steps
+3. **Plan** — design the lab architecture and components
+4. **Build** — generate complete, runnable lab artifacts
 
 ### Output
 
